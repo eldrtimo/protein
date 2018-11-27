@@ -1,21 +1,31 @@
 ## Installation
 
+
 Required Python Version: 3.7
 
-`pip` installation:
-   `pip install kaggle requests clint numpy scipy`
+`pip` installation: `pip install kaggle requests clint numpy scipy`
+
+### Kaggle API Key
+This project uses the Kaggle API to download the Human Protein Atlas Image Classification dataset.
+
+You must download by navigating to Kaggle.com > My Account; then find the subheading "API" and click "Create New API Token"
+
+Store this API key at `~/.kaggle/kaggle.json` so that the Kaggle API knows where
+to find it.
+
+For a better description on getting Kaggle authenticated, see:
+
+https://www.kaggle.com/docs/api#getting-started-installation-&-authentication
 
 
 ## Directory Structure
-
-
-`tree -d .`
+Annotated `tree -d .` output:
 ```
 ├── data
-│ └── raw
-│       ├── test
-│       └── train
-└── protein-atlas
+│ └── raw         - raw, unprocessed data download from kaggle
+│       ├── test  - test images
+│       └── train - train images
+└── protein-atlas - Python Module for this project
 ```
 
 
