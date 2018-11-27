@@ -1,17 +1,15 @@
 import os
 import requests
+import zipfile
+import subprocess
 from pathlib import Path
 from clint.textui import progress
 
-PROJECT_ROOT       = os.path.join(os.path.dirname(__file__),os.pardir)
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 DATA_PATH     = os.path.join(PROJECT_ROOT,"data")
 TRAIN_PATH    = os.path.join(PROJECT_ROOT,"data/raw/train")
 TEST_PATH     = os.path.join(PROJECT_ROOT,"data/raw/test")
-
-KAGGLE_DATA_URL    = "https://www.kaggle.com/c/10418/download-all"
-DOWNLOAD_FILE = os.path.join(DATA_PATH,"download.zip")
-
 
 def configure():
     """
@@ -25,15 +23,13 @@ def get_data():
     """
     Download the Protein Atlas Dataset
     """
-    r = requests.get(KAGGLE_DATA_URL, stream=True)
-    with open(DOWNLOAD_FILE, 'wb') as f:
-        total_length = int(r.headers.get('content-length'))
-        for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
-            if chunk:
-                f.write(chunk)
-                f.flush()
+    download_cmd = ["kaggle", "competitions", "download", "-c",
+                    "human-protein-atlas-image-classification", "-p",
+                    "{}".format(DATA_PATH)]
+    subprocess.run(download_cmd)
 
 if __name__ == "__main__":
+    print(PROJECT_ROOT)
     configure()
     get_data()
     
