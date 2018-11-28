@@ -5,11 +5,11 @@ import subprocess
 from pathlib import Path
 from clint.textui import progress
 
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
+PROJECT_ROOT  = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 DATA_PATH     = os.path.join(PROJECT_ROOT,"data")
 TRAIN_PATH    = os.path.join(PROJECT_ROOT,"data/raw/train")
 TEST_PATH     = os.path.join(PROJECT_ROOT,"data/raw/test")
+DOWNLOAD_PATH = 
 
 def configure():
     """
