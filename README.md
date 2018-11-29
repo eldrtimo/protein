@@ -24,3 +24,8 @@ For a better description on getting Kaggle authenticated, see the following reso
 │       └── train - train images
 └── protein-atlas - Python Module for this project
 ```
+
+
+## To Do
+- Write a class for the dataset, protein_atlas.Protein
+- 
