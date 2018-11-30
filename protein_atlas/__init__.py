@@ -74,7 +74,6 @@ def get_protein_atlas_zip(zipname,clean=False,force=False):
                     if not outputdir.joinpath(member.filename).exists():
                         f.extract(member, path=outputdir)
                     bar.show(i)
-            f.close()
 
         if clean:
             KAGGLE_FILE_TO_LOCAL[zipname].unlink()
