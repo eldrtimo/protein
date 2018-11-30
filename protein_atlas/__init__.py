@@ -115,6 +115,7 @@ class ProteinAtlas():
     def __init__(self):
         self.csvpath = KAGGLE_FILE_TO_LOCAL["train.csv"]
         self.df = pd.read_csv(self.csvpath)
+        self.df = self.process_df(self.df)
         # self.encoder = MultiLabelBinarizer(classes = np.arange(len(self.classes)))
         # self.labels = self.encoder.fit_transform(self.df["Target"])
 
@@ -124,9 +125,11 @@ class ProteinAtlas():
         # self.labels = self.df["Target"].apply(lambda l: np.array(l.split(" "),dtype=np.int32))
         # self.y = self.encoder.fit_transform(self.labels)
 
-    def process_csv(self):
-def read_class_vector(s):
-    return np.array(s.split(" "),dtype=np.int32)
+    def process_df(self,df):
+        df = df.set_index("Id")
+        read_target = lambda s: np.array(s.split(" "),dtype=np.int32)
+        df["labels"] = df["Target"].apply(read_target)
+        return df        
         
 
     def get_path(id,color):
