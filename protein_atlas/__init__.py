@@ -113,47 +113,65 @@ from sklearn.preprocessing import MultiLabelBinarizer
 
 class ProteinAtlas():
     def __init__(self):
-        self.df = pd.read_csv(KAGGLE_FILE_TO_LOCAL["train.csv"])
-        for color in ["red","green","blue","yellow"]:
-            self.df[color] = self.df["Id"].apply(lambda id: ProteinAtlas.get_path(id,color))
+        self.csvpath = KAGGLE_FILE_TO_LOCAL["train.csv"]
+        self.df = pd.read_csv(self.csvpath)
+        # self.encoder = MultiLabelBinarizer(classes = np.arange(len(self.classes)))
+        # self.labels = self.encoder.fit_transform(self.df["Target"])
 
-        self.labels = self.df["Target"].apply(lambda l: np.array(l.split(" "),dtype=np.int32))
-        self.encoder = MultiLabelBinarizer(classes = list(ProteinAtlas.class_dict.keys()))
-        self.y = self.encoder.fit_transform(self.labels)
+        # for color in ["red","green","blue","yellow"]:
+        #     self.df[color] = self.df["Id"].apply(lambda id: ProteinAtlas.get_path(id,color))
+
+        # self.labels = self.df["Target"].apply(lambda l: np.array(l.split(" "),dtype=np.int32))
+        # self.y = self.encoder.fit_transform(self.labels)
+
+    def process_csv(self):
+def read_class_vector(s):
+    return np.array(s.split(" "),dtype=np.int32)
+        
 
     def get_path(id,color):
         return PATH["train"].joinpath("{}_{}.png".format(id,color))
-        
-    class_dict = {
-        0  :  "Nucleoplasm",
-        1  :  "Nuclear membrane",
-        2  :  "Nucleoli",
-        3  :  "Nucleoli fibrillar center",
-        4  :  "Nuclear speckles",
-        5  :  "Nuclear bodies",
-        6  :  "Endoplasmic reticulum",
-        7  :  "Golgi apparatus",
-        8  :  "Peroxisomes",
-        9  :  "Endosomes",
-        10 :  "Lysosomes",
-        11 :  "Intermediate filaments",
-        12 :  "Actin filaments",
-        13 :  "Focal adhesion sites",
-        14 :  "Microtubules",
-        15 :  "Microtubule ends",
-        16 :  "Cytokinetic bridge",
-        17 :  "Mitotic spindle",
-        18 :  "Microtubule organizing center",
-        19 :  "Centrosome",
-        20 :  "Lipid droplets",
-        21 :  "Plasma membrane",
-        22 :  "Cell junctions",
-        23 :  "Mitochondria",
-        24 :  "Aggresome",
-        25 :  "Cytosol",
-        26 :  "Cytoplasmic bodies",
-        27 :  "Rods & rings",
-    }
+
+    @property
+    def channels(self):
+        return ["Microtubules","Antibody","Nucleus","Endoplasmic Reticulum"]
+
+    @property
+    def n_channels(self):
+        return len(self.channels)
+
+    @property
+    def classes(self):
+        return [
+            "Nucleoplasm",
+            "Nuclear membrane",
+            "Nucleoli",
+            "Nucleoli fibrillar center",
+            "Nuclear speckles",
+            "Nuclear bodies",
+            "Endoplasmic reticulum",
+            "Golgi apparatus",
+            "Peroxisomes",
+            "Endosomes",
+            "Lysosomes",
+            "Intermediate filaments",
+            "Actin filaments",
+            "Focal adhesion sites",
+            "Microtubules",
+            "Microtubule ends",
+            "Cytokinetic bridge",
+            "Mitotic spindle",
+            "Microtubule organizing center",
+            "Centrosome",
+            "Lipid droplets",
+            "Plasma membrane",
+            "Cell junctions",
+            "Mitochondria",
+            "Aggresome",
+            "Cytosol",
+            "Cytoplasmic bodies",
+            "Rods & rings",
+        ]
 
 def install():
     for name in KAGGLE_FILE_TO_LOCAL.keys():
