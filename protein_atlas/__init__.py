@@ -1,6 +1,7 @@
 import os
 import subprocess
 import pandas as pd
+
 from pathlib import Path
 from zipfile import ZipFile
 from clint.textui import progress
@@ -8,6 +9,8 @@ from clint.textui import progress
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
+from skimage.exposure import equalize_adapthist
 
 
 # Absolute path to project root directory
@@ -125,23 +128,26 @@ class ProteinAtlas():
         # self.labels = self.df["Target"].apply(lambda l: np.array(l.split(" "),dtype=np.int32))
         # self.y = self.encoder.fit_transform(self.labels)
 
-    def process_df(self,df):
-        df = df.set_index("Id")
-        read_target = lambda s: np.array(s.split(" "),dtype=np.int32)
-        df["labels"] = df["Target"].apply(read_target)
-        return df        
-        
-
-    def get_path(id,color):
-        return PATH["train"].joinpath("{}_{}.png".format(id,color))
-
     @property
     def channels(self):
-        return ["Microtubules","Antibody","Nucleus","Endoplasmic Reticulum"]
+        return [
+            "Microtubules",
+            "Antibody",
+            "Nucleus",
+            "Endoplasmic Reticulum"
+        ]
 
     @property
-    def n_channels(self):
-        return len(self.channels)
+    def colors(self): return ["red", "green", "blue", "yellow"]
+
+    @property
+    def width(self): return 512
+
+    @property
+    def height(self): return 512
+
+    @property
+    def depth(self): return len(self.channels)
 
     @property
     def classes(self):
@@ -175,6 +181,34 @@ class ProteinAtlas():
             "Cytoplasmic bodies",
             "Rods & rings",
         ]
+    @property
+    def n_classes(self):
+        return len(self.classes)
+
+    def process_df(self,df):
+        df = df.set_index("Id")
+        read_target = lambda s: np.array(s.split(" "),dtype=np.int32)
+        df["labels"] = df["Target"].apply(read_target)
+        return df        
+        
+    def get_path(self,id_,color):
+        return PATH["train"].joinpath("{}_{}.png".format(id_,color))
+
+    def get_image(self,id_):
+        img = np.zeros((self.width,self.height,self.depth))
+        for channel in range(self.depth):
+            channel_path = self.get_path(id_,self.colors[channel])
+            img[:,:,channel] = plt.imread(str(channel_path))
+        return img
+
+    def imshow(self,id_, ax=None):
+        if not ax:
+            ax = plt.gca()
+        
+        img = self.get_image(id_)
+        img = equalize_adapthist(img)
+        ax.imshow(img)
+    
 
 def install():
     for name in KAGGLE_FILE_TO_LOCAL.keys():
