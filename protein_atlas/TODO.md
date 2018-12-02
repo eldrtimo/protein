@@ -56,4 +56,9 @@ This looks like a good resource:
 
 https://personalpages.manchester.ac.uk/staff/d.h.foster/Tutorial_HSI2RGB/Tutorial_HSI2RGB.html
 
+
+http://www.hsluv.org/comparison/
+
+https://programmingdesignsystems.com/color/perceptually-uniform-color-spaces/
+
 ## Neural Network
