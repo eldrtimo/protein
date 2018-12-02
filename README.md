@@ -28,4 +28,3 @@ For a better description on getting Kaggle authenticated, see the following reso
 
 ## To Do
 - Write a class for the dataset, protein_atlas.Protein
-- 
