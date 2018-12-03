@@ -138,6 +138,10 @@ class ProteinAtlas():
         ]
 
     @property
+    def n_channels(self):
+        return len(self.channels)
+    
+    @property
     def colors(self): return ["red", "green", "blue", "yellow"]
 
     @property
