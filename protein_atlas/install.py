@@ -24,6 +24,8 @@ PATH = {
 
 KAGGLE_FILES = ["train.zip", "train.csv"]
 
+################################################################################
+
 def get_protein_atlas_zip(zipname,clean=False,force=False):
     """Download a Kaggle competition data .zip archive named `zipname` and store it
     in its own directory whose name is the stem of `zipname`.
@@ -32,7 +34,8 @@ def get_protein_atlas_zip(zipname,clean=False,force=False):
 
         zipname : str
 
-            name of the kaggle .zip file. ***UNDEFINED BEHAVIOR WHEN zipname HAS NO FILE EXTENSION***
+            name of the kaggle .zip file. ***UNDEFINED BEHAVIOR WHEN zipname HAS
+            NO FILE EXTENSION***
 
         clean : bool, default False
 
@@ -43,7 +46,7 @@ def get_protein_atlas_zip(zipname,clean=False,force=False):
             If true, download and decompress the .zip file even if the directory
             ZIPFILE_TO_DESTIONATION[zipfile] already exists.
 
-    Throws: 
+    Throws:
 
         subprocess.CalledProcessError:
 
@@ -74,9 +77,8 @@ def get_protein_atlas_zip(zipname,clean=False,force=False):
             if not outputdir.exists():
                 outputdir.mkdir(parents=True,exist_ok=True)
             members   = f.infolist()
-            n_members = len(members)
             label     = "unzipping {} ".format(zipname)
-            with progress.Bar(label=label, expected_size=n_members) as bar:
+            with progress.Bar(label=label, expected_size=len(members)) as bar:
                 for i, member in enumerate(members):
                     if not outputdir.joinpath(member.filename).exists():
                         f.extract(member, path=outputdir)
@@ -113,6 +115,7 @@ def get_protein_atlas_file(name,clean=False):
         clean : bool, default False
 
             If `clean` is `True`, delete .zip files after unzipping.
+
     """
     suffix = Path(name).suffix
     if suffix == ".csv":
@@ -128,4 +131,3 @@ def install():
 
 if __name__ == "__main__":
     install()
-
