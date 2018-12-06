@@ -22,6 +22,8 @@ PATH = {
     "train.zip" : ROOT.joinpath("data/raw/train.zip")
 }
 
+KAGGLE_FILES = ["train.zip", "test.zip", "test.csv", "train.csv"]
+
 def get_protein_atlas_zip(zipname,clean=False,force=False):
     """Download a Kaggle competition data .zip archive named `zipname` and store it
     in its own directory whose name is the stem of `zipname`.
@@ -121,7 +123,8 @@ def get_protein_atlas_file(name,clean=False):
         print("skipping {}: extension {} not recognized".format(name,suffix))
 
 def install():
-    for name in KAGGLE_FILE_TO_.keys():
+    
+    for name in KAGGLE_FILES:
         get_protein_atlas_file(name, clean=True)
 
 if __name__ == "__main__":
