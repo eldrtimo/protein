@@ -15,6 +15,8 @@ from sklearn.preprocessing import MultiLabelBinarizer
 
 from .install import PATH
 
+from PIL import Image
+
 class ProteinAtlas():
     def __init__(self):
         df          = pd.read_csv(self.csvpath).set_index("Id")
@@ -139,7 +141,7 @@ class ProteinAtlas():
         return PATH["train"].joinpath("{}_{}.png".format(id_,channel_color))
 
     def get_image(self,id_):
-        img = np.zeros((self.width,self.height,self.n_channels))
+        img = np.zeros((self.height,self.width,self.n_channels))
         for channel_ix in range(self.n_channels):
             channel_path = self.get_path(id_,channel_ix)
             img[:,:,channel_ix] = plt.imread(str(channel_path))
@@ -155,3 +157,47 @@ class ProteinAtlas():
         img = self.get_image(id_)
         img = equalize_adapthist(img)
         ax.imshow(img)
+
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
+from keras.utils import Sequence
+class ProteinAtlasGenerator(Sequence):
+    def __init__(self,batch_size = 32,labels = None):
+        self.batch_size = batch_size
+        self.atlas = ProteinAtlas()
+
+        if labels:
+            self.labels = labels
+        else:
+            self.labels = self.atlas.labels
+
+        self.n_batches = int(np.ceil(len(self.labels)/float(self.batch_size)))
+        self.mskf = MultilabelStratifiedKFold(n_splits = self.n_batches)
+
+        y = self.labels.values
+        self.batches = [test_ix for _, test_ix in self.mskf.split(y,y)]
+
+
+    def __len__(self):
+        return self.n_batches
+
+    def __iter__(self):
+        for item in [self[i] for i in range(len(self))]:
+            yield item
+
+    def __getitem__(self, ix):
+        batch_ixs = self.batches[ix]
+
+        # Dimensions of output array X
+        n_examples = len(batch_ixs)
+        rows = self.atlas.height
+        cols = self.atlas.width
+        channels = self.atlas.n_channels
+
+        ids = self.labels.index.values[batch_ixs]
+        y_batch = self.labels.values[batch_ixs]
+        x_batch = np.zeros((n_examples, rows, cols, channels))
+
+        for example_ix, id_ in enumerate(ids):
+            x_batch[example_ix,:,:,:] = self.atlas.get_image(id_)
+
+        return x_batch, y_batch
