@@ -141,11 +141,12 @@ class ProteinAtlas():
         return PATH["train"].joinpath("{}_{}.png".format(id_,channel_color))
 
     def get_image(self,id_):
-        img = np.zeros((self.height,self.width,self.n_channels))
-        for channel_ix in range(self.n_channels):
-            channel_path = self.get_path(id_,channel_ix)
-            img[:,:,channel_ix] = plt.imread(str(channel_path))
-        return img
+        bands = [None] * self.n_channels
+        for chan_ix in range(self.n_channels):
+            chan_path = self.get_path(id_,chan_ix)
+            bands[chan_ix] = Image.open(chan_path)
+
+        return np.stack(bands, axis = 2) / 255
 
     def plot_intensities(self, img):
         pass
