@@ -13,9 +13,13 @@ import matplotlib.pyplot as plt
 from skimage.exposure import equalize_adapthist
 from sklearn.preprocessing import MultiLabelBinarizer
 
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
+from keras.utils import Sequence
+from PIL import Image
+
+
 from .install import PATH
 
-from PIL import Image
 
 class ProteinAtlas():
     def __init__(self):
@@ -56,7 +60,9 @@ class ProteinAtlas():
         return self.labels.loc[mask]
 
     @property
-    def csvpath(self): return PATH["train.csv"]
+    def csvpath(self):
+        """The path where the train.csv index file is located."""
+        return PATH["train.csv"]
 
     @property
     def channels(self):
@@ -101,37 +107,16 @@ class ProteinAtlas():
 
     @property
     def classes(self):
-        return [
-            "Nucleoplasm",
-            "Nuclear membrane",
-            "Nucleoli",
-            "Nucleoli fibrillar center",
-            "Nuclear speckles",
-            "Nuclear bodies",
-            "Endoplasmic reticulum",
-            "Golgi apparatus",
-            "Peroxisomes",
-            "Endosomes",
-            "Lysosomes",
-            "Intermediate filaments",
-            "Actin filaments",
-            "Focal adhesion sites",
-            "Microtubules",
-            "Microtubule ends",
-            "Cytokinetic bridge",
-            "Mitotic spindle",
-            "Microtubule organizing center",
-            "Centrosome",
-            "Lipid droplets",
-            "Plasma membrane",
-            "Cell junctions",
-            "Mitochondria",
-            "Aggresome",
-            "Cytosol",
-            "Cytoplasmic bodies",
-            "Rods & rings",
-        ]
-
+        return [ "Nucleoplasm", "Nuclear membrane", "Nucleoli",
+                 "Nucleoli fibrillar center", "Nuclear speckles",
+                 "Nuclear bodies", "Endoplasmic reticulum",
+                 "Golgi apparatus", "Peroxisomes", "Endosomes", "Lysosomes",
+                 "Intermediate filaments", "Actin filaments", "Focal adhesion sites",
+                 "Microtubules", "Microtubule ends", "Cytokinetic bridge",
+                 "Mitotic spindle", "Microtubule organizing center",
+                 "Centrosome", "Lipid droplets", "Plasma membrane",
+                 "Cell junctions", "Mitochondria", "Aggresome", "Cytosol",
+                 "Cytoplasmic bodies", "Rods & rings" ]
     @property
     def n_classes(self):
         return len(self.classes)
@@ -147,26 +132,17 @@ class ProteinAtlas():
             bands[chan_ix] = Image.open(chan_path)
 
         return np.stack(bands, axis = 2) / 255
-
     def plot_intensities(self, img):
         pass
 
-    def imshow(self,id_, ax=None):
-        if not ax:
-            ax = plt.gca()
-        
-        img = self.get_image(id_)
-        img = equalize_adapthist(img)
-        ax.imshow(img)
 
-from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
-from keras.utils import Sequence
+
 class ProteinAtlasGenerator(Sequence):
     def __init__(self,batch_size = 32,labels = None):
         self.batch_size = batch_size
         self.atlas = ProteinAtlas()
 
-        if labels:
+        if labels is not None:
             self.labels = labels
         else:
             self.labels = self.atlas.labels
