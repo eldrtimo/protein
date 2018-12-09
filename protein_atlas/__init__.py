@@ -15,6 +15,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from keras.utils import Sequence
+from keras.preprocessing.image import ImageDataGenerator
 from PIL import Image
 
 
@@ -27,11 +28,11 @@ class ProteinAtlas():
         read_target = lambda s: np.array(s.split(" "),dtype=np.int32)
         targets     = df["Target"].apply(read_target)
         mlb         = MultiLabelBinarizer()
-        y           = mlb.fit_transform(targets.values)
+        labels      = mlb.fit_transform(targets.values)
         index       = targets.index
-        columns     = pd.MultiIndex.from_product([self.classes],names=["Target"])
+        columns     = self.classes
 
-        self.labels = pd.DataFrame(y,index,columns)
+        self.labels = pd.DataFrame(labels,index,columns)
 
     def any(self,class_):
         """
@@ -69,12 +70,7 @@ class ProteinAtlas():
         """
         Channels present in the Protein Atlas dataset.
         """
-        return [
-            "Microtubules",
-            "Antibody",
-            "Nucleus",
-            "Endoplasmic Reticulum"
-        ]
+        return ["Microtubules", "Antibody", "Nucleus", "Endoplasmic Reticulum"]
 
     @property
     def n_channels(self):
@@ -130,15 +126,21 @@ class ProteinAtlas():
         for chan_ix in range(self.n_channels):
             chan_path = self.get_path(id_,chan_ix)
             bands[chan_ix] = Image.open(chan_path)
+        return np.stack(bands, axis=2) / 255
 
-        return np.stack(bands, axis = 2) / 255
-    def plot_intensities(self, img):
-        pass
+    def get_batch(self,ids):
+        X = np.zeros((len(ids),self.height,self.width,self.n_channels))
+        for example_ix, id_ in enumerate(ids):
+            X[example_ix,:,:,:] = self.get_image(id_)
 
+        y = self.labels.loc[ids].values
 
+        return X, y
+
+    
 
 class ProteinAtlasGenerator(Sequence):
-    def __init__(self,batch_size = 32,labels = None):
+    def __init__(self,batch_size = 32,labels = None, augment = False):
         self.batch_size = batch_size
         self.atlas = ProteinAtlas()
 
@@ -152,29 +154,21 @@ class ProteinAtlasGenerator(Sequence):
 
         y = self.labels.values
         self.batches = [test_ix for _, test_ix in self.mskf.split(y,y)]
+        self.augment = augment
+        self.image_gen = ImageDataGenerator(
+            horizontal_flip = True,
+            vertical_flip = True
+        )
 
 
     def __len__(self):
         return self.n_batches
 
     def __iter__(self):
-        for item in [self[i] for i in range(len(self))]:
-            yield item
+        for X, y in [self[i] for i in range(len(self))]:
+            yield X, y
 
     def __getitem__(self, ix):
         batch_ixs = self.batches[ix]
-
-        # Dimensions of output array X
-        n_examples = len(batch_ixs)
-        rows = self.atlas.height
-        cols = self.atlas.width
-        channels = self.atlas.n_channels
-
-        ids = self.labels.index.values[batch_ixs]
-        y_batch = self.labels.values[batch_ixs]
-        x_batch = np.zeros((n_examples, rows, cols, channels))
-
-        for example_ix, id_ in enumerate(ids):
-            x_batch[example_ix,:,:,:] = self.atlas.get_image(id_)
-
-        return x_batch, y_batch
+        ids = self.atlas.labels.iloc[batch_ixs].index
+        return self.atlas.get_batch(ids)
