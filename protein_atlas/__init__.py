@@ -150,17 +150,54 @@ class ProteinAtlas():
         return len(self.classes)
 
     def get_path(self,id_,channel_ix):
+        """
+        Get the file path for an image from the Protein Atlas Kaggle dataset.
+        
+        Parameters:
+
+            id_ : str
+
+                The ID of the sample.
+
+            channel_ix : int, valid values in range(self.n_channels)
+
+                The index of the image channel to retrieve. These are:
+                    0. red (microtubules band)
+                    1. green (antigen band)
+                    2. blue (nucleus band)
+                    3. yellow (endoplasmic reticulum band)
+        """
         channel_color = self.channel_colors[channel_ix]
         return PATH["train"].joinpath("{}_{}.png".format(id_,channel_color))
 
     def get_image(self,id_):
+        """Get the 4-band image corresponding to example `id_`, returning a numpy array
+        of shape (512, 512, 4)
+
+        Parameters:
+        
+            id_ : str
+
+                The ID of the sample.
+
+        Returns:
+
+            img : ndarray of float, shape (512, 512, 4)
+
+                Values range between 0 and 1.
+        """
         bands = [None] * self.n_channels
         for chan_ix in range(self.n_channels):
             chan_path = self.get_path(id_,chan_ix)
             bands[chan_ix] = Image.open(chan_path)
+        
         return np.stack(bands, axis=2) / 255
 
     def get_batch(self,ids):
+        """
+        Given a pd.Index of example IDs, return an array of shape
+        (samples,rows,cols,channels)
+        """
         y = self.labels.loc[ids].values
         X = np.zeros((len(ids),self.height,self.width,self.n_channels))
         for example_ix, id_ in enumerate(ids):
