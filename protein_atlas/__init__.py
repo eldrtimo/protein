@@ -6,6 +6,8 @@ from zipfile import ZipFile
 
 from clint.textui import progress
 
+import seaborn as sns
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,7 +25,11 @@ from .install import PATH
 
 
 class ProteinAtlas():
-    def __init__(self):
+    """
+    Class for the ProteinAtlas
+    """
+
+    def __init__(self, train_portion = 0.9, random_state = None):
         df          = pd.read_csv(self.csvpath).set_index("Id")
         read_target = lambda s: np.array(s.split(" "),dtype=np.int32)
         targets     = df["Target"].apply(read_target)
@@ -31,10 +37,26 @@ class ProteinAtlas():
         labels      = mlb.fit_transform(targets.values)
         index       = targets.index
         columns     = self.classes
-
+        
         self.labels = pd.DataFrame(labels,index,columns)
 
-    def any(self,class_):
+        # Make test and train datasets
+        mskf = MultilabelStratifiedKFold(n_splits = int(1/(1-train_portion)), random_state = random_state)
+        train, test = mskf.split(X = self.labels, y = self.labels).__next__()
+
+        self.train = self.labels.iloc[train]
+        self.test  = self.labels.iloc[test]
+
+        def make_cmap(i,**kwds):
+            return sns.cubehelix_palette(start = i*3.0/self.n_channels,
+                                         dark = 0, light = 1,
+                                         gamma = 2.0, rot = 0, hue = 1,
+                                         **kwds)
+
+        self.cmaps = [make_cmap(i, as_cmap = True) for i in range(self.n_channels)]
+
+        
+    def any(self, class_, labels=None,):
         """
         Return examples belonging to any of the classes in `class_`.
 
@@ -44,8 +66,12 @@ class ProteinAtlas():
 
                 Integer index or indices of classes to get examples from.
         """
-        mask = pd.DataFrame(self.labels.iloc[:,class_] == 1).any(axis = 1)
-        return self.labels.loc[mask]
+
+        if labels is None:
+            labels = self.labels
+        
+        mask = pd.DataFrame(labels.iloc[:,class_] == 1).any(axis = 1)
+        return labels.loc[mask]
         
     def all(self,class_):
         """
@@ -103,16 +129,22 @@ class ProteinAtlas():
 
     @property
     def classes(self):
+        """Set of target classes for the Protein Atlas dataset.
+
+        Each of these classes represents a possible location in a human cell
+        where a protein of interest resides.
+        """
         return [ "Nucleoplasm", "Nuclear membrane", "Nucleoli",
                  "Nucleoli fibrillar center", "Nuclear speckles",
                  "Nuclear bodies", "Endoplasmic reticulum",
                  "Golgi apparatus", "Peroxisomes", "Endosomes", "Lysosomes",
-                 "Intermediate filaments", "Actin filaments", "Focal adhesion sites",
-                 "Microtubules", "Microtubule ends", "Cytokinetic bridge",
-                 "Mitotic spindle", "Microtubule organizing center",
-                 "Centrosome", "Lipid droplets", "Plasma membrane",
-                 "Cell junctions", "Mitochondria", "Aggresome", "Cytosol",
-                 "Cytoplasmic bodies", "Rods & rings" ]
+                 "Intermediate filaments", "Actin filaments",
+                 "Focal adhesion sites", "Microtubules", "Microtubule ends",
+                 "Cytokinetic bridge", "Mitotic spindle",
+                 "Microtubule organizing center", "Centrosome", "Lipid droplets",
+                 "Plasma membrane", "Cell junctions", "Mitochondria",
+                 "Aggresome", "Cytosol", "Cytoplasmic bodies", "Rods & rings" ]
+
     @property
     def n_classes(self):
         return len(self.classes)
@@ -129,17 +161,16 @@ class ProteinAtlas():
         return np.stack(bands, axis=2) / 255
 
     def get_batch(self,ids):
+        y = self.labels.loc[ids].values
         X = np.zeros((len(ids),self.height,self.width,self.n_channels))
         for example_ix, id_ in enumerate(ids):
             X[example_ix,:,:,:] = self.get_image(id_)
-
-        y = self.labels.loc[ids].values
 
         return X, y
 
     
 
-class ProteinAtlasGenerator(Sequence):
+class DataGenerator(Sequence):
     def __init__(self,batch_size = 32,labels = None, augment = False):
         self.batch_size = batch_size
         self.atlas = ProteinAtlas()
@@ -150,16 +181,16 @@ class ProteinAtlasGenerator(Sequence):
             self.labels = self.atlas.labels
 
         self.n_batches = int(np.ceil(len(self.labels)/float(self.batch_size)))
-        self.mskf = MultilabelStratifiedKFold(n_splits = self.n_batches)
+        self.mskf = MultilabelStratifiedKFold(n_splits = max(2,self.n_batches))
 
         y = self.labels.values
         self.batches = [test_ix for _, test_ix in self.mskf.split(y,y)]
         self.augment = augment
+
         self.image_gen = ImageDataGenerator(
             horizontal_flip = True,
             vertical_flip = True
         )
-
 
     def __len__(self):
         return self.n_batches
