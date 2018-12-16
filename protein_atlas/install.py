@@ -11,20 +11,17 @@ from clint.textui import progress
 ROOT = Path(__file__).parent.parent.resolve()
 
 # Project data paths
-PATH = {
-    "root"      : ROOT,
-    "data"      : ROOT.joinpath("data"),
-    "raw"       : ROOT.joinpath("data/raw"),
-    "test"      : ROOT.joinpath("data/raw/test"),
-    "train"     : ROOT.joinpath("data/raw/train"),
-    "train.csv" : ROOT.joinpath("data/raw/train.csv"),
-    "test.zip"  : ROOT.joinpath("data/raw/test.zip"),
-    "train.zip" : ROOT.joinpath("data/raw/train.zip")
-}
+PATH = { "root"                   : ROOT,
+         "data"                   : ROOT.joinpath("data"),
+         "raw"                    : ROOT.joinpath("data/raw"),
+         "test"                   : ROOT.joinpath("data/raw/test"),
+         "train"                  : ROOT.joinpath("data/raw/train"),
+         "train.csv"              : ROOT.joinpath("data/raw/train.csv"),
+         "test.zip"               : ROOT.joinpath("data/raw/test.zip"),
+         "train.zip"              : ROOT.joinpath("data/raw/train.zip"),
+         "sample_submission.csv" : ROOT.joinpath("data/raw/sample_submission.csv") }
 
 KAGGLE_FILES = ["train.zip", "train.csv"]
-
-################################################################################
 
 def get_protein_atlas_zip(zipname,clean=False,force=False):
     """Download a Kaggle competition data .zip archive named `zipname` and store it
@@ -128,6 +125,3 @@ def get_protein_atlas_file(name,clean=False):
 def install():
     for name in KAGGLE_FILES:
         get_protein_atlas_file(name, clean=True)
-
-if __name__ == "__main__":
-    install()
