@@ -122,6 +122,23 @@ def get_protein_atlas_file(name,clean=False):
     else:
         print("skipping {}: extension {} not recognized".format(name,suffix))
 
+
+class TrainGenerator:
+    def __init__(train, batch_size = 32):
+        """
+        Parameters:
+
+            train : instance of class Train
+
+            batch_size : int, default 32
+        """
+        self.batch_size = 32
+        self.labels = self.
+        
+
+
+
 def install():
     for name in KAGGLE_FILES:
         get_protein_atlas_file(name, clean=True)
+

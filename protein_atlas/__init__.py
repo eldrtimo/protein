@@ -93,37 +93,6 @@ class ProteinAtlas():
     @property
     def ncols(self): return 512
 
-    def get_images(self,ids):
-        """
-        Given a pd.Index of example IDs, return an array of shape
-        (samples,rows,cols,channels)
-        """
-        X = np.zeros((len(ids),self.nrows,self.ncols,self.n_channels))
-        for sample_ix, id_ in enumerate(ids):
-            X[sample_ix,:,:,:] = self.get_image(id_)
-
-        return X
-
-    def get_path(self,id_,channel_ix):
-        """
-        Get the file path for an image from the Protein Atlas Kaggle dataset.
-        
-        Parameters:
-
-            id_ : str
-
-                The ID of the sample.
-
-            channel_ix : int, valid values in range(self.n_channels)
-
-                The index of the image channel to retrieve. These are:
-                    0. red (microtubules band)
-                    1. green (antigen band)
-                    2. blue (nucleus band)
-                    3. yellow (endoplasmic reticulum band)
-        """
-        channel_color = self.channel_colors[channel_ix]
-        return self.img_path.joinpath("{}_{}.png".format(id_,channel_color))
 
     @property
     def classes(self):
@@ -169,10 +138,6 @@ class ProteinAtlas():
         """
         return ["Microtubules", "Antibody", "Nucleus", "Endoplasmic Reticulum"]
 
-    @property
-    def n_channels(self):
-        """Number of channels in each image of the Protein Atlas dataset."""
-        return len(self.channels)
     
     @property
     def channel_colors(self):
@@ -182,6 +147,32 @@ class ProteinAtlas():
         each .png file.
         """
         return ["red", "green", "blue", "yellow"]
+
+    @property
+    def n_channels(self):
+        """Number of channels in each image of the Protein Atlas dataset."""
+        return len(self.channels)
+
+    def get_path(self,id_,channel_ix):
+        """
+        Get the file path for an image from the Protein Atlas Kaggle dataset.
+        
+        Parameters:
+
+            id_ : str
+
+                The ID of the sample.
+
+            channel_ix : int, valid values in range(self.n_channels)
+
+                The index of the image channel to retrieve. These are:
+                    0. red (microtubules band)
+                    1. green (antigen band)
+                    2. blue (nucleus band)
+                    3. yellow (endoplasmic reticulum band)
+        """
+        channel_color = self.channel_colors[channel_ix]
+        return self.img_path.joinpath("{}_{}.png".format(id_,channel_color))
 
 
     def get_image(self,id_):
@@ -207,7 +198,28 @@ class ProteinAtlas():
         
         return np.stack(bands, axis=2) / 255
 
+    def get_images(self,ids):
+        """
+        Given a pd.Index of example IDs, return an array of shape
+        (samples,rows,cols,channels)
+        """
+        X = np.zeros((len(ids),self.nrows,self.ncols,self.n_channels))
+        for sample_ix, id_ in enumerate(ids):
+            X[sample_ix,:,:,:] = self.get_image(id_)
 
+        return X
+
+    def render_batch(self,imgs):
+        nsamples, nrows, ncols, nchannels = imgs.shape
+
+        new_imgs = np.zeros((nsamples, nrows, ncols, 4))
+        bands = np.split(imgs,nchannels,axis = 3)
+        for channel in range(nchannels):
+            bands[channel] = np.squeeze(bands[channel],axis = 3)
+            bands[channel] = self.cmaps[channel](bands[channel])
+            new_imgs = new_imgs + bands[channel] / nchannels
+
+        return new_imgs
 
 
 class Test(ProteinAtlas):
@@ -215,6 +227,11 @@ class Test(ProteinAtlas):
         super().__init__(img_path = PATH["test"])
         df = pd.read_csv(PATH["sample_submission.csv"]).set_index("Id")
         self.index = df.index
+
+    def get_generator(self, batch_size = 128):
+        return TestGenerator(self,batch_size)
+        
+
 
 class Train(ProteinAtlas):
     def __init__(self):
@@ -226,8 +243,130 @@ class Train(ProteinAtlas):
         labels      = mlb.fit_transform(targets.values)
         index       = targets.index
         columns     = self.classes
+        self.mlb = mlb
         self.labels = pd.DataFrame(labels,index,columns)
         self.index  = self.labels.index
+
+    def train_test_split(self,train_portion, batch_size = 32):
+        mskf = MultilabelStratifiedKFold(n_splits = int(1/(1-train_portion)))
+        train_set, val_set = mskf.split(X = self.labels, y = self.labels).__next__()
+
+        train_generator = TrainGenerator(self,train_set,batch_size)
+        val_generator = TrainGenerator(self,train_set,batch_size)
+
+        return train_generator, val_generator
+
+
+
+class TrainGenerator(Sequence):
+    """Data generator for generating batches of data from the Train dataset.
+
+    This source of the data will be taken to be a cross validation fold.
+
+    The use of MultilabelStratifiedKFold inside this class is to ensure labels
+    distributions batches are evenly mixed among all classes.
+    """
+    def __init__(self, train, train_set, batch_size = 32 ):
+        """Parameters:
+        
+            train : intance of Train
+
+            train_set : ndarray, int
+
+                The indices of the training set.
+        """
+        self.batch_size = 32
+        self.train = train
+        self.train_set = train_set
+        self.n_splits = int(np.ceil(len(train_set)/float(self.batch_size)))
+        self.mskf = MultilabelStratifiedKFold(n_splits = self.n_splits)
+
+        y = self.train.labels.values[self.train_set]
+        X = y # dummy argument
+
+        # Select batch sets from k-fold test sets
+        self.batch_sets = [test_set for _ , test_set in self.mskf.split(X,y)]
+        
+
+    # def on_epoch_end(self,epoch):
+    #     self.mskf = MultilabelStratifiedKFold(n_splits = self.n_splits)
+
+    def __len__(self):
+        return len(self.batch_sets)
+
+    def __getitem__(self, index):
+        """Returns the ith batch of the data to be generated."""
+        batch_set = self.batch_sets[index]
+        batch_index = self.train.labels.index[batch_set]
+        x_batch = self.train.get_images(batch_index)
+        y_batch = self.train.labels.values[batch_set,:]
+        return x_batch, y_batch
+
+class TestGenerator(Sequence):
+    """Data generator for generating batches of data from the Test dataset.
+    """
+    def __init__(self, test, batch_size = 32):
+        """Parameters:
+        
+            train : intance of Train
+
+            train_set : ndarray, int
+
+                The indices of the training set.
+        """
+        self.test = test
+        self.batch_size = batch_size
+        self.batch_sets = np.array_split(np.arange(len(test.index)),len(self))
+
+    # def on_epoch_end(self,epoch):
+    #     self.mskf = MultilabelStratifiedKFold(n_splits = self.n_splits)
+
+    def __len__(self):
+        return int(np.ceil(len(self.test.index) / float(self.batch_size)))
+
+    def __getitem__(self, index):
+        """Returns the ith batch of the data to be generated."""
+        batch_set = self.batch_sets[index]
+        batch_index = self.test.index[batch_set]
+        x_batch = self.test.get_images(batch_index)
+        return x_batch
+
+
+
+# class DataGenerator(Sequence):
+#     def __init__(self,batch_size = 32,labels=None, augment=False):
+#         self.batch_size = batch_size
+#         self.atlas = ProteinAtlas()
+
+#         if labels is not None:
+#             self.labels = labels
+#         else:
+#             self.labels = self.atlas.labels
+
+#         self.n_batches = int(np.ceil(len(self.labels)/float(self.batch_size)))
+#         self.mskf = MultilabelStratifiedKFold(n_splits = max(2,self.n_batches))
+
+#         y = self.labels.values
+#         self.batches = [test_ix for _, test_ix in self.mskf.split(y,y)]
+#         self.augment = augment
+
+#         self.image_gen = ImageDataGenerator(
+#             horizontal_flip = True,
+#             vertical_flip = True
+#         )
+
+#     def __len__(self):
+#         return self.n_batches
+
+#     def __iter__(self):
+#         for X, y in [self[i] for i in range(len(self))]:
+#             yield X, y
+
+#     def __getitem__(self, ix):
+#         batch_ixs = self.batches[ix]
+#         ids = self.atlas.labels.iloc[batch_ixs].index
+#         return self.atlas.get_batch(ids)
+
 
 
 # class ProteinAtlas():
@@ -439,39 +578,6 @@ class Train(ProteinAtlas):
 #         img = Image.fromarray(np.uint8(img*255))
 #         return img
 
-# class DataGenerator(Sequence):
-#     def __init__(self,batch_size = 32,labels=None, augment=False):
-#         self.batch_size = batch_size
-#         self.atlas = ProteinAtlas()
-
-#         if labels is not None:
-#             self.labels = labels
-#         else:
-#             self.labels = self.atlas.labels
-
-#         self.n_batches = int(np.ceil(len(self.labels)/float(self.batch_size)))
-#         self.mskf = MultilabelStratifiedKFold(n_splits = max(2,self.n_batches))
-
-#         y = self.labels.values
-#         self.batches = [test_ix for _, test_ix in self.mskf.split(y,y)]
-#         self.augment = augment
-
-#         self.image_gen = ImageDataGenerator(
-#             horizontal_flip = True,
-#             vertical_flip = True
-#         )
-
-#     def __len__(self):
-#         return self.n_batches
-
-#     def __iter__(self):
-#         for X, y in [self[i] for i in range(len(self))]:
-#             yield X, y
-
-#     def __getitem__(self, ix):
-#         batch_ixs = self.batches[ix]
-#         ids = self.atlas.labels.iloc[batch_ixs].index
-#         return self.atlas.get_batch(ids)
 
 # if __name__ == "__main__":
 #     print("Hello")
